@@ -24,6 +24,9 @@ EXPORT_PATH="output"
 # Force overwrite
 FORCE_OW=false
 
+# Scan filesystem
+SCAN_FILESYSTEM=false
+
 # Input
 INPUT_PATH=""
 
@@ -90,6 +93,11 @@ function from_font_file () {
 
 while (( "$#" )); do
     case "$1" in
+        -s|--scan)
+            SCAN_FILESYSTEM=true
+            #echo "Scanning filesystem"
+            shift
+            ;;
         -f|--force)
             FORCE_OW=true
             #echo "Forcing"
@@ -172,8 +180,34 @@ else
 fi
 
 if [ "$INPUT_PATH" == "" ]; then
+    
     # Scan system for font file
-    echo "Scanning filesystem"
+    if [ $"fc-list -v" ]  && [ "$SCAN_FILESYSTEM" = false ]; then
+        
+        # Using font-config if installed.
+        
+        fc-list --format="%{file[0]}\n" | while read line; do
+            echo "Processing '$line'"
+            from_font_file "$line"
+        done
+    else
+
+        # Scanning the system for all font file.
+        read -p "Font config not installed, do you want to scan all font files on your system (y/n)?" choice
+        case "$choice" in
+            y|Y ) 
+                echo "Scanning filesystem..."
+                ;;
+            * )
+                echo "Aborting."
+                exit -1
+                ;;
+        esac
+        find / -type f -name "*.ttf" 2> /dev/null | while read line; do
+            echo "Processing '$line'"
+            from_font_file "$line"
+        done
+    fi
 else
     from_font_file "$INPUT_PATH"
 fi
